@@ -23,6 +23,7 @@ from PyQt6.QtMultimedia import (
 
 class VoiceRecorder:
     def __init__(self) -> None:
+        # Wire up the capture session, recorder, and playback pipeline.
         self._capture = QMediaCaptureSession()
         device = QMediaDevices.defaultAudioInput()
         if device.isNull():
@@ -36,6 +37,7 @@ class VoiceRecorder:
         if self._audio_input is not None:
             self._capture.setAudioInput(self._audio_input)
         self._capture.setRecorder(self._recorder)
+        # Playback uses a simple media player -> audio output chain.
         self._audio_output = QAudioOutput()
         self._player = QMediaPlayer()
         self._player.setAudioOutput(self._audio_output)
@@ -56,11 +58,13 @@ class VoiceRecorder:
             showWarning("No audio input device available.")
             return
 
+        # Build a timestamped output path in the configured media folder.
         media_dir = _get_save_dir()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"voice_{timestamp}.wav"
         path = media_dir / filename
 
+        # Configure WAV output and start recording to disk.
         fmt = QMediaFormat()
         fmt.setFileFormat(QMediaFormat.FileFormat.Wave)
         self._recorder.setMediaFormat(fmt)
@@ -77,6 +81,7 @@ class VoiceRecorder:
         self._recording = False
 
         if self._last_path is not None:
+            # Post-process for a simple gain boost after recording.
             _amplify_wav(self._last_path, _get_gain())
             print(f"AnkiVoiceRecorder saved: {self._last_path}")
             tooltip(f"Recording saved: {self._last_path.name}", parent=mw, period=2000)
@@ -97,10 +102,12 @@ class VoiceRecorder:
 
 _recorder = VoiceRecorder()
 
+# Defaults used when user config is missing or invalid.
 DEFAULT_RECORD_SHORTCUT = "Ctrl+R"
 DEFAULT_PLAY_SHORTCUT = "Ctrl+Shift+R"
 
 
+# Returns add-on's ID by asking Anki's add-on manager to look up the module name
 def _addon_id() -> str:
     return mw.addonManager.addonFromModule(__name__)
 
@@ -108,6 +115,7 @@ def _addon_id() -> str:
 def _get_config() -> dict:
     config = mw.addonManager.getConfig(_addon_id())
     if config is None:
+        # First-run defaults are stored back into Anki's config store.
         config = {
             "save_dir": "",
             "gain": 1,
@@ -118,6 +126,7 @@ def _get_config() -> dict:
     return config
 
 
+# That helper writes your add‑on’s config in a way that works across Anki versions.
 def _write_config(config: dict) -> None:
     if hasattr(mw.addonManager, "writeConfig"):
         mw.addonManager.writeConfig(_addon_id(), config)
@@ -130,10 +139,12 @@ def _get_save_dir() -> Path:
     raw_path = str(config.get("save_dir", "")).strip()
     if raw_path:
         return Path(raw_path)
+    # Fall back to the collection media directory.
     return Path(mw.col.media.dir())
 
 
 def _get_gain() -> float:
+    # Keep gain within a safe range to avoid clipping.
     config = _get_config()
     try:
         gain = float(config.get("gain", 1.25))
@@ -167,6 +178,7 @@ def _get_play_shortcut() -> str:
 
 
 def _set_save_dir() -> None:
+    # Let the user pick a persistent recording directory.
     current = str(_get_save_dir())
     chosen = QFileDialog.getExistingDirectory(mw, "Select Recording Folder", current)
     if not chosen:
@@ -178,11 +190,13 @@ def _set_save_dir() -> None:
 
 
 def _apply_shortcuts() -> None:
+    # Update shortcuts without recreating the actions.
     action_recording.setShortcut(QKeySequence(_get_record_shortcut()))
     action_playback.setShortcut(QKeySequence(_get_play_shortcut()))
 
 
 def _set_keybindings() -> None:
+    # Prompt for new shortcuts and persist them.
     config = _get_config()
     current_record = str(config.get("record_shortcut", DEFAULT_RECORD_SHORTCUT)).strip() or DEFAULT_RECORD_SHORTCUT
     record_text, ok = QInputDialog.getText(
@@ -220,6 +234,7 @@ def _set_keybindings() -> None:
 
 
 def _amplify_wav(path: Path, gain: float) -> None:
+    # Simple post-processing using stdlib WAV + audioop.
     if not path.exists():
         return
     try:
@@ -234,6 +249,7 @@ def _amplify_wav(path: Path, gain: float) -> None:
     except Exception as exc:
         print(f"AnkiVoiceRecorder gain failed: {exc}")
 
+# Main UI actions that integrate into Anki's Tools menu.
 action_recording = QAction("AnkiVoiceRecorder: Toggle Recording", mw)
 action_recording.setShortcut(QKeySequence(_get_record_shortcut()))
 action_recording.triggered.connect(_recorder.toggle)
