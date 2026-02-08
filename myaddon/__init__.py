@@ -8,7 +8,7 @@ import wave
 import audioop
 
 from aqt import mw
-from aqt.qt import QAction, QFileDialog, QInputDialog, QKeySequence, Qt, QUrl
+from aqt.qt import QAction, QFileDialog, QInputDialog, QKeySequence, QMenu, Qt, QUrl
 from aqt.utils import showInfo, showWarning, tooltip
 from PyQt6.QtMultimedia import (
     QAudioInput,
@@ -237,17 +237,27 @@ def _amplify_wav(path: Path, gain: float) -> None:
 action_recording = QAction("AnkiVoiceRecorder: Toggle Recording", mw)
 action_recording.setShortcut(QKeySequence(_get_record_shortcut()))
 action_recording.triggered.connect(_recorder.toggle)
-mw.form.menuTools.addAction(action_recording)
 
 action_playback = QAction("AnkiVoiceRecorder: Play Last Recording", mw)
 action_playback.setShortcut(QKeySequence(_get_play_shortcut()))
 action_playback.triggered.connect(_recorder.play_last)
-mw.form.menuTools.addAction(action_playback)
 
 settings_action = QAction("AnkiVoiceRecorder: Set Recording Folder...", mw)
 settings_action.triggered.connect(_set_save_dir)
-mw.form.menuTools.addAction(settings_action)
 
 keybindings_action = QAction("AnkiVoiceRecorder: Set Keybindings...", mw)
 keybindings_action.triggered.connect(_set_keybindings)
-mw.form.menuTools.addAction(keybindings_action)
+
+tools_menu = mw.form.menuTools
+anki_menu = QMenu("AnkiRecorder", mw)
+options_menu = QMenu("Options", mw)
+
+anki_menu.addAction(action_recording)
+anki_menu.addAction(action_playback)
+anki_menu.addSeparator()
+anki_menu.addMenu(options_menu)
+
+options_menu.addAction(settings_action)
+options_menu.addAction(keybindings_action)
+
+tools_menu.addMenu(anki_menu)
