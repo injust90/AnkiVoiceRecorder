@@ -39,3 +39,7 @@ Config is stored by Anki. Defaults are defined in myaddon/config.json:
 ## Notes
 - Recordings are WAV files named voice_YYYYMMDD_HHMMSS.wav.
 - Add-ons must be run from inside Anki; they will not run from VS Code.
+
+## Licenses / Credits
+- Uses Anki's bundled APIs and its Qt/PyQt runtime at execution time.
+- No third-party code is bundled by this add-on.
