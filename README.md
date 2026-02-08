@@ -25,6 +25,9 @@ An Anki add-on that records microphone audio to WAV, lets you play back the last
 - Tools -> AnkiRecorder -> Options -> AnkiVoiceRecorder: Set Recording Folder...
 - Tools -> AnkiRecorder -> Options -> AnkiVoiceRecorder: Set Keybindings...
 
+## Demo video
+[![AnkiVoiceRecorder demo](https://img.youtube.com/vi/CCyq5sc3yto/0.jpg)](https://youtu.be/CCyq5sc3yto)
+
 ## Config
 Config is stored by Anki. Defaults are defined in myaddon/config.json:
 
