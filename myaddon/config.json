@@ -1,4 +1,6 @@
 {
   "save_dir": "",
-  "gain": 1.25
+  "gain": 1.25,
+  "record_shortcut": "Ctrl+R",
+  "play_shortcut": "Ctrl+Shift+R"
 }

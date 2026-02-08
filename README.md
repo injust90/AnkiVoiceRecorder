@@ -6,6 +6,7 @@ An Anki add-on that records microphone audio to WAV, lets you play back the last
 - Record/stop toggle (default: Ctrl+R)
 - Play last recording (default: Ctrl+Shift+R)
 - Tool menu actions for recording, playback, and folder selection
+- Tool menu action to set keybindings
 - Optional gain boost after recording
 
 ## Install (development)
@@ -29,12 +30,16 @@ Config is stored by Anki. Defaults are defined in myaddon/config.json:
 ```json
 {
   "save_dir": "",
-  "gain": 1.25
+  "gain": 1.25,
+  "record_shortcut": "Ctrl+R",
+  "play_shortcut": "Ctrl+Shift+R"
 }
 ```
 
 - save_dir: empty means use the collection media folder.
 - gain: multiplier applied after recording (1.0 = no change).
+- record_shortcut: shortcut for Toggle Recording.
+- play_shortcut: shortcut for Play Last Recording.
 
 ## Notes
 - Recordings are WAV files named voice_YYYYMMDD_HHMMSS.wav.

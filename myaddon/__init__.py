@@ -8,7 +8,7 @@ import wave
 import audioop
 
 from aqt import mw
-from aqt.qt import QAction, QFileDialog, QKeySequence, Qt, QUrl
+from aqt.qt import QAction, QFileDialog, QInputDialog, QKeySequence, Qt, QUrl
 from aqt.utils import showInfo, showWarning, tooltip
 from PyQt6.QtMultimedia import (
     QAudioInput,
@@ -69,7 +69,8 @@ class VoiceRecorder:
 
         self._recording = True
         self._last_path = path
-        tooltip("Recording started (Ctrl+R to stop)", parent=mw, period=2000)
+        record_shortcut = _get_record_shortcut()
+        tooltip(f"Recording started ({record_shortcut} to stop)", parent=mw, period=2000)
 
     def stop(self) -> None:
         self._recorder.stop()
@@ -96,6 +97,9 @@ class VoiceRecorder:
 
 _recorder = VoiceRecorder()
 
+DEFAULT_RECORD_SHORTCUT = "Ctrl+R"
+DEFAULT_PLAY_SHORTCUT = "Ctrl+Shift+R"
+
 
 def _addon_id() -> str:
     return mw.addonManager.addonFromModule(__name__)
@@ -104,7 +108,12 @@ def _addon_id() -> str:
 def _get_config() -> dict:
     config = mw.addonManager.getConfig(_addon_id())
     if config is None:
-        config = {"save_dir": "", "gain": 1}
+        config = {
+            "save_dir": "",
+            "gain": 1,
+            "record_shortcut": DEFAULT_RECORD_SHORTCUT,
+            "play_shortcut": DEFAULT_PLAY_SHORTCUT,
+        }
         _write_config(config)
     return config
 
@@ -137,6 +146,26 @@ def _get_gain() -> float:
     return gain
 
 
+def _is_valid_shortcut(text: str) -> bool:
+    return not QKeySequence(text).isEmpty()
+
+
+def _get_record_shortcut() -> str:
+    config = _get_config()
+    raw = str(config.get("record_shortcut", DEFAULT_RECORD_SHORTCUT)).strip()
+    if raw and _is_valid_shortcut(raw):
+        return QKeySequence(raw).toString()
+    return DEFAULT_RECORD_SHORTCUT
+
+
+def _get_play_shortcut() -> str:
+    config = _get_config()
+    raw = str(config.get("play_shortcut", DEFAULT_PLAY_SHORTCUT)).strip()
+    if raw and _is_valid_shortcut(raw):
+        return QKeySequence(raw).toString()
+    return DEFAULT_PLAY_SHORTCUT
+
+
 def _set_save_dir() -> None:
     current = str(_get_save_dir())
     chosen = QFileDialog.getExistingDirectory(mw, "Select Recording Folder", current)
@@ -146,6 +175,48 @@ def _set_save_dir() -> None:
     config["save_dir"] = chosen
     _write_config(config)
     tooltip(f"Recording folder set to: {chosen}", parent=mw, period=2500)
+
+
+def _apply_shortcuts() -> None:
+    action_recording.setShortcut(QKeySequence(_get_record_shortcut()))
+    action_playback.setShortcut(QKeySequence(_get_play_shortcut()))
+
+
+def _set_keybindings() -> None:
+    config = _get_config()
+    current_record = str(config.get("record_shortcut", DEFAULT_RECORD_SHORTCUT)).strip() or DEFAULT_RECORD_SHORTCUT
+    record_text, ok = QInputDialog.getText(
+        mw,
+        "Recording Shortcut",
+        "Set shortcut for Toggle Recording:",
+        text=current_record,
+    )
+    if not ok:
+        return
+    record_text = record_text.strip()
+    if not _is_valid_shortcut(record_text):
+        showWarning("Invalid shortcut for recording.")
+        return
+
+    current_play = str(config.get("play_shortcut", DEFAULT_PLAY_SHORTCUT)).strip() or DEFAULT_PLAY_SHORTCUT
+    play_text, ok = QInputDialog.getText(
+        mw,
+        "Playback Shortcut",
+        "Set shortcut for Play Last Recording:",
+        text=current_play,
+    )
+    if not ok:
+        return
+    play_text = play_text.strip()
+    if not _is_valid_shortcut(play_text):
+        showWarning("Invalid shortcut for playback.")
+        return
+
+    config["record_shortcut"] = QKeySequence(record_text).toString()
+    config["play_shortcut"] = QKeySequence(play_text).toString()
+    _write_config(config)
+    _apply_shortcuts()
+    tooltip("Shortcuts updated.", parent=mw, period=2000)
 
 
 def _amplify_wav(path: Path, gain: float) -> None:
@@ -164,15 +235,19 @@ def _amplify_wav(path: Path, gain: float) -> None:
         print(f"AnkiVoiceRecorder gain failed: {exc}")
 
 action_recording = QAction("AnkiVoiceRecorder: Toggle Recording", mw)
-action_recording.setShortcut(QKeySequence("Ctrl+R"))
+action_recording.setShortcut(QKeySequence(_get_record_shortcut()))
 action_recording.triggered.connect(_recorder.toggle)
 mw.form.menuTools.addAction(action_recording)
 
 action_playback = QAction("AnkiVoiceRecorder: Play Last Recording", mw)
-action_playback.setShortcut(QKeySequence("Ctrl+Shift+R"))
+action_playback.setShortcut(QKeySequence(_get_play_shortcut()))
 action_playback.triggered.connect(_recorder.play_last)
 mw.form.menuTools.addAction(action_playback)
 
 settings_action = QAction("AnkiVoiceRecorder: Set Recording Folder...", mw)
 settings_action.triggered.connect(_set_save_dir)
 mw.form.menuTools.addAction(settings_action)
+
+keybindings_action = QAction("AnkiVoiceRecorder: Set Keybindings...", mw)
+keybindings_action.triggered.connect(_set_keybindings)
+mw.form.menuTools.addAction(keybindings_action)
